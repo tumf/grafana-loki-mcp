@@ -17,11 +17,27 @@ A [FastMCP](https://github.com/jlowin/fastmcp) server that allows querying Loki 
 
 ## Installation
 
-1. Clone this repository
-2. Install dependencies:
+### Using pip
 
 ```bash
-pip install fastmcp requests
+pip install grafana-loki-mcp
+```
+
+### Development Setup
+
+1. Clone this repository
+2. Install dependencies using uv:
+
+```bash
+# Install uv
+pip install uv
+
+# Create and activate virtual environment
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+uv pip install -e ".[dev]"
 ```
 
 ## Usage
@@ -57,6 +73,35 @@ python server.py -u https://your-grafana-instance.com -k your-api-key
 
 # Using SSE transport
 python server.py --transport sse
+```
+
+## Development
+
+### Testing
+
+Run the test suite:
+
+```bash
+pytest
+```
+
+Run with coverage:
+
+```bash
+pytest --cov=. --cov-report=term
+```
+
+### Linting and Formatting
+
+```bash
+# Run ruff linter
+ruff check .
+
+# Run black formatter
+black .
+
+# Run type checking
+mypy .
 ```
 
 ## Available Tools
