@@ -1,8 +1,5 @@
----
-description: Model Context Protocol (MCP) の基礎知識
-globs: 
-alwaysApply: false
----
+# Model Context Protocol (MCP) の基礎知識
+
 ## MCPとは
 
 Model Context Protocol (MCP) は、大規模言語モデル (LLM) とツールを接続するための標準プロトコルです。MCPを使用することで、LLMはさまざまなツールやリソースにアクセスし、より複雑なタスクを実行できるようになります。
@@ -87,8 +84,28 @@ if __name__ == "__main__":
 
 ### クライアント側
 
-クライアントコードを書くために以下のsdkが必要です
-https://github.com/modelcontextprotocol/python-sdk
+```python
+# 基本的なMCPクライアント
+import requests
+
+class MCPClient:
+    def __init__(self, base_url: str = "http://localhost:52229"):
+        self.base_url = base_url.rstrip("/")
+        self.headers = {
+            "Content-Type": "application/json",
+        }
+    
+    def call_tool(self, tool_name: str, params: dict) -> dict:
+        """ツールを呼び出す"""
+        url = f"{self.base_url}/api/tools/{tool_name}"
+        
+        try:
+            response = requests.post(url, headers=self.headers, json=params)
+            response.raise_for_status()
+            return response.json()
+        except requests.RequestException as e:
+            return {"error": str(e), "status": "error"}
+```
 
 ## MCPのトランスポート
 
@@ -128,4 +145,4 @@ MCPは複数のトランスポート方式をサポートしています：
 
 - **FastMCP**: Pythonで実装されたMCPサーバーフレームワーク
 - **MCP SDK**: TypeScript/JavaScript用のMCPクライアント/サーバーSDK
-- **Claude Desktop**: MCPを使用したAnthropicのデスクトップアプリケーション
+- **Claude Desktop**: MCPを使用したAnthropicのデスクトップアプリケーション 
