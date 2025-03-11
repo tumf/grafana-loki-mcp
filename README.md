@@ -11,7 +11,7 @@ A [FastMCP](https://github.com/jlowin/fastmcp) server that allows querying Loki 
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - FastMCP
 - Requests
 
@@ -151,7 +151,7 @@ async with Client() as client:
             "limit": 50
         }
     )
-    
+
     # Format the results
     formatted = await client.call_tool(
         "format_loki_results",
@@ -160,6 +160,6 @@ async with Client() as client:
             "format_type": "markdown"
         }
     )
-    
+
     print(formatted)
 ```

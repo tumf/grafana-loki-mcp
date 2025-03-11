@@ -38,6 +38,23 @@ class GrafanaClient:
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
+        # Get the Loki datasource UID
+        self.loki_uid = self._get_loki_datasource_uid()
+
+    def _get_loki_datasource_uid(self) -> str:
+        """Get the UID of the Loki datasource."""
+        try:
+            response = requests.get(
+                f"{self.base_url}/api/datasources", headers=self.headers
+            )
+            response.raise_for_status()
+            datasources = response.json()
+            for ds in datasources:
+                if ds.get("type") == "loki":
+                    return str(ds.get("uid", ""))
+            return ""
+        except requests.RequestException:
+            return ""
 
     def query_loki(
         self,
@@ -61,13 +78,32 @@ class GrafanaClient:
             Dict containing query results
         """
         # Set default time range if not provided
+        now = datetime.now()
         if not start:
-            start = (datetime.now() - timedelta(hours=1)).isoformat()
+            start_time = now - timedelta(hours=1)
+            start = str(int(start_time.timestamp()))
+        elif not start.isdigit():
+            # Convert ISO format to timestamp if needed
+            try:
+                start_time = datetime.fromisoformat(start.replace('Z', '+00:00'))
+                start = str(int(start_time.timestamp()))
+            except ValueError:
+                # Keep as is if not a valid ISO format
+                pass
+
         if not end:
-            end = datetime.now().isoformat()
+            end = str(int(now.timestamp()))
+        elif not end.isdigit():
+            # Convert ISO format to timestamp if needed
+            try:
+                end_time = datetime.fromisoformat(end.replace('Z', '+00:00'))
+                end = str(int(end_time.timestamp()))
+            except ValueError:
+                # Keep as is if not a valid ISO format
+                pass
 
         # Construct the Loki query API endpoint
-        url = f"{self.base_url}/api/datasources/proxy/loki/loki/api/v1/query_range"
+        url = f"{self.base_url}/api/datasources/proxy/uid/{self.loki_uid}/loki/api/v1/query_range"
 
         params: Dict[str, Any] = {
             "query": query,
@@ -86,7 +122,7 @@ class GrafanaClient:
 
     def get_loki_labels(self) -> Dict[str, Any]:
         """Get all label names from Loki."""
-        url = f"{self.base_url}/api/datasources/proxy/loki/loki/api/v1/labels"
+        url = f"{self.base_url}/api/datasources/proxy/uid/{self.loki_uid}/loki/api/v1/labels"
 
         try:
             response = requests.get(url, headers=self.headers)
@@ -97,13 +133,46 @@ class GrafanaClient:
 
     def get_loki_label_values(self, label: str) -> Dict[str, Any]:
         """Get values for a specific label from Loki."""
-        endpoint = f"/api/datasources/proxy/loki/loki/api/v1/label/{label}/values"
+        endpoint = f"/api/datasources/proxy/uid/{self.loki_uid}/loki/api/v1/label/{label}/values"
         url = f"{self.base_url}{endpoint}"
 
         try:
             response = requests.get(url, headers=self.headers)
             response.raise_for_status()
             return response.json()  # type: ignore
+        except requests.RequestException as e:
+            return {"error": str(e), "status": "error"}
+
+    def get_datasources(self) -> Dict[str, Any]:
+        """Get all datasources from Grafana."""
+        url = f"{self.base_url}/api/datasources"
+
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            return {"datasources": response.json()}  # type: ignore
+        except requests.RequestException as e:
+            return {"error": str(e), "status": "error"}
+
+    def get_datasource_by_id(self, datasource_id: int) -> Dict[str, Any]:
+        """Get a specific datasource by ID from Grafana."""
+        url = f"{self.base_url}/api/datasources/{datasource_id}"
+
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            return {"datasource": response.json()}  # type: ignore
+        except requests.RequestException as e:
+            return {"error": str(e), "status": "error"}
+
+    def get_datasource_by_name(self, name: str) -> Dict[str, Any]:
+        """Get a specific datasource by name from Grafana."""
+        url = f"{self.base_url}/api/datasources/name/{name}"
+
+        try:
+            response = requests.get(url, headers=self.headers)
+            response.raise_for_status()
+            return {"datasource": response.json()}  # type: ignore
         except requests.RequestException as e:
             return {"error": str(e), "status": "error"}
 
@@ -205,6 +274,48 @@ def get_loki_label_values(label: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
+def get_datasources() -> Dict[str, Any]:
+    """
+    Get all datasources from Grafana.
+
+    Returns:
+        Dict containing all datasources
+    """
+    client = get_grafana_client()
+    return client.get_datasources()
+
+
+@mcp.tool()
+def get_datasource_by_id(datasource_id: int) -> Dict[str, Any]:
+    """
+    Get a specific datasource by ID from Grafana.
+
+    Args:
+        datasource_id: ID of the datasource to retrieve
+
+    Returns:
+        Dict containing the datasource details
+    """
+    client = get_grafana_client()
+    return client.get_datasource_by_id(datasource_id)
+
+
+@mcp.tool()
+def get_datasource_by_name(name: str) -> Dict[str, Any]:
+    """
+    Get a specific datasource by name from Grafana.
+
+    Args:
+        name: Name of the datasource to retrieve
+
+    Returns:
+        Dict containing the datasource details
+    """
+    client = get_grafana_client()
+    return client.get_datasource_by_name(name)
+
+
+@mcp.tool()
 def format_loki_results(results: Dict[str, Any], format_type: str = "text") -> str:
     """
     Format Loki query results in a more readable format.
@@ -259,6 +370,66 @@ def format_loki_results(results: Dict[str, Any], format_type: str = "text") -> s
                 time_str = dt.strftime("%Y-%m-%d %H:%M:%S")
                 output.append(f"{time_str}: {log}")
 
+            output.append("")
+
+    return "\n".join(output)
+
+
+@mcp.tool()
+def format_datasources_results(
+    results: Dict[str, Any], format_type: str = "text"
+) -> str:
+    """
+    Format datasources results in a more readable format.
+
+    Args:
+        results: Datasources results from get_datasources or get_datasource_by_id/name
+        format_type: Output format ('text', 'json', or 'markdown')
+
+    Returns:
+        Formatted results as a string
+    """
+    if "error" in results:
+        return f"Error: {results['error']}"
+
+    # Handle single datasource result
+    if "datasource" in results:
+        datasources = [results["datasource"]]
+    # Handle multiple datasources result
+    elif "datasources" in results:
+        datasources = results["datasources"]
+    else:
+        return "No datasource information found in results"
+
+    if not datasources:
+        return "No datasources found"
+
+    if format_type == "json":
+        return json.dumps(datasources, indent=2)
+
+    output = []
+
+    if format_type == "markdown":
+        for ds in datasources:
+            output.append(
+                f"### {ds.get('name', 'Unnamed')} (ID: {ds.get('id', 'N/A')})\n"
+            )
+            output.append(f"**Type**: {ds.get('type', 'N/A')}")
+            output.append(f"**URL**: {ds.get('url', 'N/A')}")
+            output.append(f"**Access**: {ds.get('access', 'N/A')}")
+            output.append(f"**Database**: {ds.get('database', 'N/A')}")
+            output.append(f"**Is Default**: {ds.get('isDefault', False)}")
+            output.append("\n")
+    else:  # text format
+        for ds in datasources:
+            output.append(
+                f"Name: {ds.get('name', 'Unnamed')} (ID: {ds.get('id', 'N/A')})"
+            )
+            output.append(f"Type: {ds.get('type', 'N/A')}")
+            output.append(f"URL: {ds.get('url', 'N/A')}")
+            output.append(f"Access: {ds.get('access', 'N/A')}")
+            output.append(f"Database: {ds.get('database', 'N/A')}")
+            output.append(f"Is Default: {ds.get('isDefault', False)}")
             output.append("")
 
     return "\n".join(output)
