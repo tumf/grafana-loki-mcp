@@ -9,7 +9,6 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime, timedelta
 from typing import Annotated, Any, Dict, Optional, cast
 
 # mypy: ignore-errors
@@ -79,7 +78,6 @@ class GrafanaClient:
         query: str,
         start: Optional[str] = None,
         end: Optional[str] = None,
-        since: Optional[str] = None,
         limit: int = 100,
         direction: str = "backward",
     ) -> Dict[str, Any]:
@@ -89,19 +87,12 @@ class GrafanaClient:
             query: Loki query string
             start: Start time (ISO format, default: 1 hour ago)
             end: End time (ISO format, default: now)
-            since: Duration to calculate start relative to end
             limit: Maximum number of log lines to return
             direction: Query direction ('forward' or 'backward')
 
         Returns:
             Dict containing query results
         """
-        # Set default time range if not provided
-        if start is None:
-            start = (datetime.now() - timedelta(hours=1)).isoformat()
-        if end is None:
-            end = datetime.now().isoformat()
-
         # Get Loki datasource UID
         datasource_id = self._get_loki_datasource_uid()
 
@@ -115,12 +106,13 @@ class GrafanaClient:
         url = f"{base_url}/loki/api/v1/query_range"
         params = {
             "query": query,
-            "start": start,
-            "end": end,
-            "since": since,
             "limit": limit,
             "direction": direction,
         }
+        if start is not None:
+            params["start"] = start
+        if end is not None:
+            params["end"] = end
 
         # Send request
         try:
@@ -377,10 +369,6 @@ def query_loki(
         Optional[str],
         "End time (ISO format, Unix timestamp, or another supported format like RFC3339)",
     ] = None,
-    since: Annotated[
-        Optional[str],
-        "Duration to calculate start relative to end (e.g. '1h', '5m', '30s')",
-    ] = None,
     limit: Annotated[int, "Maximum number of log lines to return"] = 100,
     direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
 ) -> Dict[str, Any]:
@@ -401,7 +389,6 @@ def query_loki(
             - Rate of logs: `rate({app="frontend"} [5m])`
         start: Start time (ISO format, Unix timestamp, or another supported format like RFC3339, default: 1 hour ago)
         end: End time (ISO format, Unix timestamp, or another supported format like RFC3339, default: now)
-        since: Duration to calculate start relative to end (e.g. '1h', '5m', '30s')
         limit: Maximum number of log lines to return
         direction: Query direction ('forward' or 'backward')
 
@@ -409,7 +396,7 @@ def query_loki(
         Dict containing query results
     """
     client = get_grafana_client()
-    return client.query_loki(query, start, end, since, limit, direction)
+    return client.query_loki(query, start, end, limit, direction)
 
 
 @mcp.tool()
