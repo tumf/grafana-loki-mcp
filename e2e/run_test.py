@@ -14,7 +14,7 @@ import time
 PARENT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
-def main():
+def main() -> int:
     """Run the e2e test."""
     # Ensure we have the required packages
     print("Ensuring required packages are installed...")

@@ -10,7 +10,7 @@ import json
 import os
 import sys
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional, cast
+from typing import Annotated, Any, Dict, Optional, cast
 
 # mypy: ignore-errors
 import requests
@@ -79,6 +79,7 @@ class GrafanaClient:
         query: str,
         start: Optional[str] = None,
         end: Optional[str] = None,
+        since: Optional[str] = None,
         limit: int = 100,
         direction: str = "backward",
     ) -> Dict[str, Any]:
@@ -88,6 +89,7 @@ class GrafanaClient:
             query: Loki query string
             start: Start time (ISO format, default: 1 hour ago)
             end: End time (ISO format, default: now)
+            since: Duration to calculate start relative to end
             limit: Maximum number of log lines to return
             direction: Query direction ('forward' or 'backward')
 
@@ -115,6 +117,7 @@ class GrafanaClient:
             "query": query,
             "start": start,
             "end": end,
+            "since": since,
             "limit": limit,
             "direction": direction,
         }
@@ -130,20 +133,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Raise a ValueError with the detailed error message
             raise ValueError(f"Error querying Loki: {error_detail}") from e
 
     def get_loki_labels(self) -> Dict[str, Any]:
@@ -169,20 +167,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Raise a ValueError with the detailed error message
             raise ValueError(f"Error getting Loki labels: {error_detail}") from e
 
     def get_loki_label_values(self, label: str) -> Dict[str, Any]:
@@ -211,20 +204,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Raise a ValueError with the detailed error message
             raise ValueError(f"Error getting Loki label values: {error_detail}") from e
 
     def get_datasources(self) -> Dict[str, Any]:
@@ -242,20 +230,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Raise a ValueError with the detailed error message
             raise ValueError(f"Error getting datasources: {error_detail}") from e
 
     def get_datasource_by_id(self, datasource_id: int) -> Dict[str, Any]:
@@ -276,20 +259,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Raise a ValueError with the detailed error message
             raise ValueError(f"Error getting datasource by ID: {error_detail}") from e
 
     def get_datasource_by_name(self, name: str) -> Dict[str, Any]:
@@ -310,20 +288,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Raise a ValueError with the detailed error message
             raise ValueError(f"Error getting datasource by name: {error_detail}") from e
 
 
@@ -395,19 +368,40 @@ def get_grafana_client() -> GrafanaClient:
 # Tool definitions
 @mcp.tool()
 def query_loki(
-    query: str,
-    start: Optional[str] = None,
-    end: Optional[str] = None,
-    limit: int = 100,
-    direction: str = "backward",
+    query: Annotated[str, "Loki query string (LogQL) to execute"],
+    start: Annotated[
+        Optional[str],
+        "Start time (ISO format, Unix timestamp, or another supported format like RFC3339)",
+    ] = None,
+    end: Annotated[
+        Optional[str],
+        "End time (ISO format, Unix timestamp, or another supported format like RFC3339)",
+    ] = None,
+    since: Annotated[
+        Optional[str],
+        "Duration to calculate start relative to end (e.g. '1h', '5m', '30s')",
+    ] = None,
+    limit: Annotated[int, "Maximum number of log lines to return"] = 100,
+    direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
 ) -> Dict[str, Any]:
     """
     Query Loki logs through Grafana.
 
     Args:
-        query: Loki query string
-        start: Start time (ISO format, default: 1 hour ago)
-        end: End time (ISO format, default: now)
+        query: Loki query string (LogQL). LogQL is Loki's query language that supports log filtering and extraction.
+            Examples:
+            - Simple log stream selection: `{app="frontend"}`
+            - Filtering logs with pattern: `{app="frontend"} |= "error"`
+            - Multiple filters: `{app="frontend"} |= "error" != "timeout"`
+            - Regular expression: `{app="frontend"} |~ "error.*timeout"`
+            - Extracting fields: `{app="frontend"} | json`
+            - Extracting specific fields: `{app="frontend"} | json message,level`
+            - Filtering on extracted fields: `{app="frontend"} | json | level="error"`
+            - Counting logs: `count_over_time({app="frontend"} [5m])`
+            - Rate of logs: `rate({app="frontend"} [5m])`
+        start: Start time (ISO format, Unix timestamp, or another supported format like RFC3339, default: 1 hour ago)
+        end: End time (ISO format, Unix timestamp, or another supported format like RFC3339, default: now)
+        since: Duration to calculate start relative to end (e.g. '1h', '5m', '30s')
         limit: Maximum number of log lines to return
         direction: Query direction ('forward' or 'backward')
 
@@ -415,7 +409,7 @@ def query_loki(
         Dict containing query results
     """
     client = get_grafana_client()
-    return client.query_loki(query, start, end, limit, direction)
+    return client.query_loki(query, start, end, since, limit, direction)
 
 
 @mcp.tool()
