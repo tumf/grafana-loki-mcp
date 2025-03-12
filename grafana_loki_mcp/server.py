@@ -104,11 +104,7 @@ class GrafanaClient:
         datasource_id = self._get_loki_datasource_uid()
 
         # Prepare query
-        # Use /api/datasources/id/ instead of /api/datasources/proxy/ if it's a numeric ID
-        if datasource_id.isdigit():
-            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
-        else:
-            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
+        base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
 
         url = f"{base_url}/loki/api/v1/query_range"
         params = {
@@ -130,20 +126,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Return error details directly
             raise ValueError(f"Error querying Loki: {error_detail}") from e
 
     def get_loki_labels(self) -> Dict[str, Any]:
@@ -154,11 +145,8 @@ class GrafanaClient:
         """
         datasource_id = self._get_loki_datasource_uid()
 
-        # Use /api/datasources/id/ instead of /api/datasources/proxy/ if it's a numeric ID
-        if datasource_id.isdigit():
-            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
-        else:
-            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
+        # Set base URL for API request
+        base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
 
         url = f"{base_url}/loki/api/v1/labels"
 
@@ -169,20 +157,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Return error details directly
             raise ValueError(f"Error getting Loki labels: {error_detail}") from e
 
     def get_loki_label_values(self, label: str) -> Dict[str, Any]:
@@ -196,11 +179,8 @@ class GrafanaClient:
         """
         datasource_id = self._get_loki_datasource_uid()
 
-        # Use /api/datasources/id/ instead of /api/datasources/proxy/ if it's a numeric ID
-        if datasource_id.isdigit():
-            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
-        else:
-            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
+        # Set base URL for API request
+        base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
 
         url = f"{base_url}/loki/api/v1/label/{label}/values"
 
@@ -211,20 +191,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Return error details directly
             raise ValueError(f"Error getting Loki label values: {error_detail}") from e
 
     def get_datasources(self) -> Dict[str, Any]:
@@ -242,20 +217,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Return error details directly
             raise ValueError(f"Error getting datasources: {error_detail}") from e
 
     def get_datasource_by_id(self, datasource_id: int) -> Dict[str, Any]:
@@ -276,20 +246,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Return error details directly
             raise ValueError(f"Error getting datasource by ID: {error_detail}") from e
 
     def get_datasource_by_name(self, name: str) -> Dict[str, Any]:
@@ -310,20 +275,15 @@ class GrafanaClient:
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
             error_detail = str(e)
-            if hasattr(e, 'response') and e.response is not None:
+            if hasattr(e, "response") and e.response is not None:
                 try:
                     error_json = e.response.json()
                     error_detail = f"{error_detail} - Details: {json.dumps(error_json)}"
-                except:
+                except Exception:
                     if e.response.text:
                         error_detail = f"{error_detail} - Response: {e.response.text}"
 
-            # Create an error response
-            error_response = {
-                "status": "error",
-                "errorType": "request_error",
-                "error": error_detail
-            }
+            # Return error details directly
             raise ValueError(f"Error getting datasource by name: {error_detail}") from e
 
 
