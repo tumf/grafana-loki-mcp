@@ -1,5 +1,10 @@
 # Grafana-Loki MCP Server
 
+[![Test](https://github.com/tumf/grafana-loki-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/tumf/grafana-loki-mcp/actions/workflows/test.yml)
+[![PyPI version](https://badge.fury.io/py/grafana-loki-mcp.svg)](https://badge.fury.io/py/grafana-loki-mcp)
+[![codecov](https://codecov.io/gh/tumf/grafana-loki-mcp/branch/main/graph/badge.svg)](https://codecov.io/gh/tumf/grafana-loki-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 A [FastMCP](https://github.com/jlowin/fastmcp) server that allows querying Loki logs from Grafana.
 
 ## Features
@@ -54,7 +59,7 @@ Set the following environment variables:
 You can also provide these values as command line arguments:
 
 ```bash
-python server.py -u https://your-grafana-instance.com -k your-api-key
+grafana-loki-mcp -u https://your-grafana-instance.com -k your-api-key
 ```
 
 Additional options:
@@ -66,13 +71,13 @@ Additional options:
 # Using environment variables
 export GRAFANA_URL=https://your-grafana-instance.com
 export GRAFANA_API_KEY=your-api-key
-python server.py
+grafana-loki-mcp
 
 # Using command line arguments
-python server.py -u https://your-grafana-instance.com -k your-api-key
+grafana-loki-mcp -u https://your-grafana-instance.com -k your-api-key
 
 # Using SSE transport
-python server.py --transport sse
+grafana-loki-mcp --transport sse
 ```
 
 ## Development
@@ -163,3 +168,7 @@ async with Client() as client:
 
     print(formatted)
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

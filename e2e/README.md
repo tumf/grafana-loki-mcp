@@ -69,4 +69,4 @@ python simple_client.py
 
 ## Test Output
 
-The tests will output logs to the console showing the progress and results of each test case. 
+The tests will output logs to the console showing the progress and results of each test case.
