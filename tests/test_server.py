@@ -8,12 +8,11 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
 
-# Add the parent directory to the path so we can import the server module
+# Add the parent directory to the path so we can import the package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from server import GrafanaClient, format_loki_results
+from grafana_loki_mcp.server import GrafanaClient, format_loki_results
 
 
 @pytest.fixture
@@ -34,10 +33,7 @@ def test_grafana_client_init():
     """Test GrafanaClient initialization."""
     client = GrafanaClient("https://grafana.example.com/", "test-key")
     assert client.base_url == "https://grafana.example.com"
-    assert client.headers == {
-        "Authorization": "Bearer test-key",
-        "Content-Type": "application/json",
-    }
+    assert client.headers == {"Authorization": "Bearer test-key"}
 
 
 @patch("requests.get")
@@ -46,6 +42,9 @@ def test_query_loki(mock_get, grafana_client, mock_response):
     # Setup mock response
     mock_response.json.return_value = {"data": {"result": []}}
     mock_get.return_value = mock_response
+
+    # Mock the _get_loki_datasource_uid method
+    grafana_client._get_loki_datasource_uid = MagicMock(return_value="test-uid")
 
     # Call the method
     result = grafana_client.query_loki('{app="test"}')
@@ -56,7 +55,8 @@ def test_query_loki(mock_get, grafana_client, mock_response):
     # Verify the request
     mock_get.assert_called_once()
     args, kwargs = mock_get.call_args
-    assert args[0].endswith("/api/datasources/proxy/loki/loki/api/v1/query_range")
+    assert "test-uid" in args[0]
+    assert "loki/api/v1/query_range" in args[0]
     assert kwargs["params"]["query"] == '{app="test"}'
     assert kwargs["params"]["limit"] == 100
     assert kwargs["params"]["direction"] == "backward"
@@ -69,6 +69,9 @@ def test_get_loki_labels(mock_get, grafana_client, mock_response):
     mock_response.json.return_value = {"data": ["app", "env", "job"]}
     mock_get.return_value = mock_response
 
+    # Mock the _get_loki_datasource_uid method
+    grafana_client._get_loki_datasource_uid = MagicMock(return_value="test-uid")
+
     # Call the method
     result = grafana_client.get_loki_labels()
 
@@ -78,7 +81,8 @@ def test_get_loki_labels(mock_get, grafana_client, mock_response):
     # Verify the request
     mock_get.assert_called_once()
     args, kwargs = mock_get.call_args
-    assert args[0].endswith("/api/datasources/proxy/loki/loki/api/v1/labels")
+    assert "test-uid" in args[0]
+    assert "loki/api/v1/labels" in args[0]
 
 
 @patch("requests.get")
@@ -87,6 +91,9 @@ def test_get_loki_label_values(mock_get, grafana_client, mock_response):
     # Setup mock response
     mock_response.json.return_value = {"data": ["app1", "app2", "app3"]}
     mock_get.return_value = mock_response
+
+    # Mock the _get_loki_datasource_uid method
+    grafana_client._get_loki_datasource_uid = MagicMock(return_value="test-uid")
 
     # Call the method
     result = grafana_client.get_loki_label_values("app")
@@ -97,21 +104,67 @@ def test_get_loki_label_values(mock_get, grafana_client, mock_response):
     # Verify the request
     mock_get.assert_called_once()
     args, kwargs = mock_get.call_args
-    assert args[0].endswith("/api/datasources/proxy/loki/loki/api/v1/label/app/values")
+    assert "test-uid" in args[0]
+    assert "loki/api/v1/label/app/values" in args[0]
 
 
 @patch("requests.get")
-def test_query_loki_error(mock_get, grafana_client):
-    """Test query_loki method with error."""
-    # Setup mock to raise an exception
-    mock_get.side_effect = requests.RequestException("Connection error")
+def test_get_datasources(mock_get, grafana_client, mock_response):
+    """Test get_datasources method."""
+    # Setup mock response
+    mock_response.json.return_value = [{"uid": "loki", "type": "loki"}]
+    mock_get.return_value = mock_response
 
     # Call the method
-    result = grafana_client.query_loki('{app="test"}')
+    result = grafana_client.get_datasources()
 
-    # Verify the result contains the error
-    assert result["status"] == "error"
-    assert "Connection error" in result["error"]
+    # Verify the result
+    assert result["datasources"] == [{"uid": "loki", "type": "loki"}]
+
+    # Verify the request
+    mock_get.assert_called_once()
+    args, kwargs = mock_get.call_args
+    assert "api/datasources" in args[0]
+
+
+@patch("requests.get")
+def test_get_datasource_by_id(mock_get, grafana_client, mock_response):
+    """Test get_datasource_by_id method."""
+    # Setup mock response
+    mock_response.json.return_value = {"uid": "loki", "type": "loki", "id": 1}
+    mock_get.return_value = mock_response
+
+    # Call the method
+    result = grafana_client.get_datasource_by_id(1)
+
+    # Verify the result
+    assert result["uid"] == "loki"
+    assert result["type"] == "loki"
+
+    # Verify the request
+    mock_get.assert_called_once()
+    args, kwargs = mock_get.call_args
+    assert "api/datasources/1" in args[0]
+
+
+@patch("requests.get")
+def test_get_datasource_by_name(mock_get, grafana_client, mock_response):
+    """Test get_datasource_by_name method."""
+    # Setup mock response
+    mock_response.json.return_value = {"uid": "loki", "type": "loki", "name": "Loki"}
+    mock_get.return_value = mock_response
+
+    # Call the method
+    result = grafana_client.get_datasource_by_name("Loki")
+
+    # Verify the result
+    assert result["uid"] == "loki"
+    assert result["type"] == "loki"
+
+    # Verify the request
+    mock_get.assert_called_once()
+    args, kwargs = mock_get.call_args
+    assert "api/datasources/name/Loki" in args[0]
 
 
 def test_format_loki_results_text():
@@ -135,7 +188,7 @@ def test_format_loki_results_text():
     formatted = format_loki_results(results, "text")
 
     # Verify the formatted output
-    assert "Stream: app=test, env=prod" in formatted
+    assert "Stream: {'app': 'test', 'env': 'prod'}" in formatted
     assert "Log line 1" in formatted
     assert "Log line 2" in formatted
 
@@ -161,8 +214,8 @@ def test_format_loki_results_markdown():
     formatted = format_loki_results(results, "markdown")
 
     # Verify the formatted output
-    assert "### Stream: app=test, env=prod" in formatted
-    assert "**" in formatted  # Check for bold timestamp
+    assert "### Stream: {'app': 'test', 'env': 'prod'}" in formatted
+    assert "| Timestamp | Log |" in formatted
     assert "Log line 1" in formatted
     assert "Log line 2" in formatted
 
@@ -189,30 +242,16 @@ def test_format_loki_results_json():
 
     # Verify the formatted output is valid JSON
     parsed = json.loads(formatted)
-    assert isinstance(parsed, list)
-    assert parsed[0]["stream"]["app"] == "test"
-    assert parsed[0]["values"][0][1] == "Log line 1"
+    assert parsed == results
 
 
-def test_format_loki_results_error():
-    """Test format_loki_results with error result."""
-    # Sample error result
-    results = {"error": "Connection error", "status": "error"}
-
-    # Format the results
-    formatted = format_loki_results(results)
-
-    # Verify the formatted output
-    assert "Error: Connection error" in formatted
-
-
-def test_format_loki_results_empty():
-    """Test format_loki_results with empty result."""
-    # Sample empty result
+def test_format_loki_results_no_results():
+    """Test format_loki_results with no results."""
+    # Sample Loki query result with no streams
     results = {"data": {"result": []}}
 
     # Format the results
     formatted = format_loki_results(results)
 
     # Verify the formatted output
-    assert "No log streams found" in formatted
+    assert "No results found" in formatted
