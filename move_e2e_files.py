@@ -5,7 +5,6 @@ Script to move e2e test files to the e2e directory.
 
 import os
 import shutil
-from pathlib import Path
 
 # Define the source files and their destinations
 files_to_move = [
@@ -35,4 +34,4 @@ for script in ["e2e/run_server.sh", "e2e/run_client.sh"]:
         print(f"Making {script} executable")
         os.chmod(script, 0o755)
 
-print("Done moving e2e test files") 
+print("Done moving e2e test files")

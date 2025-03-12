@@ -24,7 +24,7 @@ def main():
 
     # Start the server in a separate process
     print("Starting the server...")
-    server_script = os.path.join(PARENT_DIR, "server.py")
+    server_script = os.path.join(PARENT_DIR, "grafana_loki_mcp", "server.py")
     server_process = subprocess.Popen(
         [sys.executable, server_script, "--transport", "stdio"],
         stdout=subprocess.PIPE,
