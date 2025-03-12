@@ -3,46 +3,50 @@ name: Publish to PyPI
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    
-    - name: Install uv
-      run: |
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-    
-    - name: Install dependencies
-      run: |
-        uv pip install build twine
-    
-    - name: Extract version from tag
-      id: get_version
-      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-    
-    - name: Verify version matches
-      run: |
-        VERSION_FILE="grafana_loki_mcp/__version__.py"
-        PACKAGE_VERSION=$(grep -oP '__version__ = "\K[^"]+' $VERSION_FILE)
-        TAG_VERSION=${{ steps.get_version.outputs.VERSION }}
-        
-        if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
-          echo "Error: Version mismatch between tag ($TAG_VERSION) and package ($PACKAGE_VERSION)"
-          exit 1
-        fi
-    
-    - name: Build package
-      run: uv run python -m build
-    
-    - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }} 
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Create virtual environment
+        run: |
+          uv venv
+
+      - name: Install dependencies
+        run: |
+          uv pip install build twine
+
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Verify version matches
+        run: |
+          VERSION_FILE="grafana_loki_mcp/__version__.py"
+          PACKAGE_VERSION=$(grep -oP '__version__ = "\K[^"]+' $VERSION_FILE)
+          TAG_VERSION=${{ steps.get_version.outputs.VERSION }}
+
+          if [ "$PACKAGE_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: Version mismatch between tag ($TAG_VERSION) and package ($PACKAGE_VERSION)"
+            exit 1
+          fi
+
+      - name: Build package
+        run: uv run python -m build
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
