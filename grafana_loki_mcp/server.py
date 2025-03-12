@@ -106,7 +106,7 @@ class GrafanaClient:
         # Prepare query
         # Use /api/datasources/id/ instead of /api/datasources/proxy/ if it's a numeric ID
         if datasource_id.isdigit():
-            base_url = f"{self.base_url}/api/datasources/id/{datasource_id}"
+            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
         else:
             base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
 
@@ -156,7 +156,7 @@ class GrafanaClient:
 
         # Use /api/datasources/id/ instead of /api/datasources/proxy/ if it's a numeric ID
         if datasource_id.isdigit():
-            base_url = f"{self.base_url}/api/datasources/id/{datasource_id}"
+            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
         else:
             base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
 
@@ -198,7 +198,7 @@ class GrafanaClient:
 
         # Use /api/datasources/id/ instead of /api/datasources/proxy/ if it's a numeric ID
         if datasource_id.isdigit():
-            base_url = f"{self.base_url}/api/datasources/id/{datasource_id}"
+            base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
         else:
             base_url = f"{self.base_url}/api/datasources/proxy/{datasource_id}"
 
