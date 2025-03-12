@@ -186,12 +186,7 @@ async def test_query_loki(session: ClientSession) -> bool:
 
         result = await session.call_tool(
             "query_loki",
-            arguments={
-                "query": query,
-                "limit": 5,
-                "start": start,
-                "end": end
-            }
+            arguments={"query": query, "limit": 5, "start": start, "end": end},
         )
         logger.info(f"query_loki result for '{query}': {result}")
         return True
@@ -212,12 +207,7 @@ async def test_format_loki_results(session: ClientSession) -> bool:
 
         query_result = await session.call_tool(
             "query_loki",
-            arguments={
-                "query": query,
-                "limit": 5,
-                "start": start,
-                "end": end
-            }
+            arguments={"query": query, "limit": 5, "start": start, "end": end},
         )
 
         # Extract the content from the result
@@ -244,20 +234,17 @@ async def test_format_loki_results(session: ClientSession) -> bool:
                     "resultType": "streams",
                     "result": [
                         {
-                            "stream": {
-                                "job": "grafana",
-                                "level": "info"
-                            },
+                            "stream": {"job": "grafana", "level": "info"},
                             "values": [
                                 [
                                     "1614556800000000000",
-                                    "This is a dummy log line for testing"
+                                    "This is a dummy log line for testing",
                                 ],
-                                ["1614556800000000001", "Another dummy log line"]
-                            ]
+                                ["1614556800000000001", "Another dummy log line"],
+                            ],
                         }
-                    ]
-                }
+                    ],
+                },
             }
 
         # Format the results
