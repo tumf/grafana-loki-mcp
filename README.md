@@ -121,6 +121,7 @@ Parameters:
 - `end`: End time (ISO format, default: now)
 - `limit`: Maximum number of log lines to return (default: 100)
 - `direction`: Query direction ('forward' or 'backward', default: 'backward')
+- `max_per_line`: Maximum characters per log line (0 for unlimited, default: 100)
 
 ### get_loki_labels
 
@@ -140,6 +141,7 @@ Format Loki query results in a more readable format.
 Parameters:
 - `results`: Loki query results from query_loki
 - `format_type`: Output format ('text', 'json', or 'markdown', default: 'text')
+- `max_per_line`: Maximum characters per log line (0 for unlimited, default: 0)
 
 ## Example Usage
 
@@ -148,12 +150,13 @@ Parameters:
 from mcp.client import Client
 
 async with Client() as client:
-    # Query Loki logs
+    # Query Loki logs with max_per_line limit
     results = await client.call_tool(
         "query_loki",
         {
             "query": '{app="my-app"} |= "error"',
-            "limit": 50
+            "limit": 50,
+            "max_per_line": 100  # Limit log lines to 100 characters
         }
     )
 
@@ -162,7 +165,8 @@ async with Client() as client:
         "format_loki_results",
         {
             "results": results,
-            "format_type": "markdown"
+            "format_type": "markdown",
+            "max_per_line": 100  # Can also limit at formatting time
         }
     )
 
