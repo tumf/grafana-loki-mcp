@@ -80,6 +80,7 @@ class GrafanaClient:
         end: Optional[str] = None,
         limit: int = 100,
         direction: str = "backward",
+        max_per_line: int = 100,
     ) -> Dict[str, Any]:
         """Query Loki logs through Grafana.
 
@@ -89,6 +90,7 @@ class GrafanaClient:
             end: End time (ISO format, default: now)
             limit: Maximum number of log lines to return
             direction: Query direction ('forward' or 'backward')
+            max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
 
         Returns:
             Dict containing query results
@@ -117,6 +119,18 @@ class GrafanaClient:
 
             # Parse response
             data = response.json()
+            
+            # Apply max_per_line limit if specified
+            if max_per_line > 0:
+                if "data" in data and "result" in data["data"]:
+                    for stream in data["data"]["result"]:
+                        if "values" in stream:
+                            for i, value in enumerate(stream["values"]):
+                                if len(value) > 1:  # Make sure we have [timestamp, log] format
+                                    # Truncate log line if it exceeds max_per_line
+                                    if len(value[1]) > max_per_line:
+                                        stream["values"][i] = [value[0], value[1][:max_per_line] + "..."]
+            
             return cast(Dict[str, Any], data)
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
@@ -361,6 +375,7 @@ def query_loki(
     ] = None,
     limit: Annotated[int, "Maximum number of log lines to return"] = 100,
     direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
+    max_per_line: Annotated[int, "Maximum characters per log line (0 for unlimited)"] = 100,
 ) -> Dict[str, Any]:
     """
     Query Loki logs through Grafana.
@@ -381,12 +396,13 @@ def query_loki(
         end: End time (ISO format, Unix timestamp, or another supported format like RFC3339, default: now)
         limit: Maximum number of log lines to return
         direction: Query direction ('forward' or 'backward')
+        max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
 
     Returns:
         Dict containing query results
     """
     client = get_grafana_client()
-    return client.query_loki(query, start, end, limit, direction)
+    return client.query_loki(query, start, end, limit, direction, max_per_line)
 
 
 @mcp.tool()
@@ -459,13 +475,18 @@ def get_datasource_by_name(name: str) -> Dict[str, Any]:
 
 
 @mcp.tool()
-def format_loki_results(results: Dict[str, Any], format_type: str = "text") -> str:
+def format_loki_results(
+    results: Dict[str, Any],
+    format_type: Annotated[str, "Output format ('text', 'json', or 'markdown')"] = "text",
+    max_per_line: Annotated[int, "Maximum characters per log line (0 for unlimited)"] = 0
+) -> str:
     """
     Format Loki query results in a more readable format.
 
     Args:
         results: Loki query results from query_loki
         format_type: Output format ('text', 'json', or 'markdown')
+        max_per_line: Maximum characters per log line (0 for unlimited)
 
     Returns:
         Formatted results as a string
@@ -491,6 +512,9 @@ def format_loki_results(results: Dict[str, Any], format_type: str = "text") -> s
             output.append(f"Stream: {labels}")
             for value in values:
                 timestamp, log = value
+                # Truncate log if max_per_line is specified and > 0
+                if max_per_line > 0 and len(log) > max_per_line:
+                    log = log[:max_per_line] + "..."
                 output.append(f"[{timestamp}] {log}")
             output.append("")
         return "\n".join(output)
@@ -505,6 +529,9 @@ def format_loki_results(results: Dict[str, Any], format_type: str = "text") -> s
             output.append("| --- | --- |")
             for value in values:
                 timestamp, log = value
+                # Truncate log if max_per_line is specified and > 0
+                if max_per_line > 0 and len(log) > max_per_line:
+                    log = log[:max_per_line] + "..."
                 # Escape pipe characters in log
                 log = log.replace("|", "\\|")
                 output.append(f"| {timestamp} | {log} |")

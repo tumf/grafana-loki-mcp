@@ -63,6 +63,36 @@ def test_query_loki(mock_get, grafana_client, mock_response):
 
 
 @patch("requests.get")
+def test_query_loki_with_max_per_line(mock_get, grafana_client, mock_response):
+    """Test query_loki method with max_per_line parameter."""
+    # Setup mock response with long log lines
+    mock_response.json.return_value = {
+        "data": {
+            "result": [
+                {
+                    "stream": {"app": "test"},
+                    "values": [
+                        ["1609459200000000000", "This is a very long log line that should be truncated when max_per_line is set"],
+                        ["1609459201000000000", "Short log"]
+                    ]
+                }
+            ]
+        }
+    }
+    mock_get.return_value = mock_response
+
+    # Mock the _get_loki_datasource_uid method
+    grafana_client._get_loki_datasource_uid = MagicMock(return_value="test-uid")
+
+    # Call the method with max_per_line=20
+    result = grafana_client.query_loki('{app="test"}', max_per_line=20)
+
+    # Verify the result has truncated log lines
+    assert result["data"]["result"][0]["values"][0][1] == "This is a very long ..."
+    assert result["data"]["result"][0]["values"][1][1] == "Short log"  # Short log should not be truncated
+
+
+@patch("requests.get")
 def test_get_loki_labels(mock_get, grafana_client, mock_response):
     """Test get_loki_labels method."""
     # Setup mock response
@@ -255,3 +285,53 @@ def test_format_loki_results_no_results():
 
     # Verify the formatted output
     assert "No results found" in formatted
+
+
+def test_format_loki_results_with_max_per_line_text():
+    """Test format_loki_results with max_per_line in text format."""
+    # Sample Loki query result with long log lines
+    results = {
+        "data": {
+            "result": [
+                {
+                    "stream": {"app": "test"},
+                    "values": [
+                        ["1609459200000000000", "This is a very long log line that should be truncated when max_per_line is set"],
+                        ["1609459201000000000", "Short log"]
+                    ]
+                }
+            ]
+        }
+    }
+
+    # Format the results with max_per_line=20
+    formatted = format_loki_results(results, "text", max_per_line=20)
+
+    # Verify the formatted output has truncated log lines
+    assert "This is a very long ..." in formatted
+    assert "Short log" in formatted  # Short log should not be truncated
+
+
+def test_format_loki_results_with_max_per_line_markdown():
+    """Test format_loki_results with max_per_line in markdown format."""
+    # Sample Loki query result with long log lines
+    results = {
+        "data": {
+            "result": [
+                {
+                    "stream": {"app": "test"},
+                    "values": [
+                        ["1609459200000000000", "This is a very long log line that should be truncated when max_per_line is set"],
+                        ["1609459201000000000", "Short log"]
+                    ]
+                }
+            ]
+        }
+    }
+
+    # Format the results with max_per_line=20
+    formatted = format_loki_results(results, "markdown", max_per_line=20)
+
+    # Verify the formatted output has truncated log lines
+    assert "This is a very long ..." in formatted
+    assert "Short log" in formatted  # Short log should not be truncated
