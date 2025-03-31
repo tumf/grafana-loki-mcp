@@ -115,4 +115,9 @@ bump-minor:
 bump-major:
 	$(eval NEW_MAJOR := $(shell echo $$(($(MAJOR) + 1))))
 	$(eval NEW_VERSION := $(NEW_MAJOR).0.0)
-	$(call update_version,$(NEW_VERSION)) 
+	$(call update_version,$(NEW_VERSION))
+
+# Bump beta version (x.x.x-beta)
+bump-beta:
+	$(eval NEW_VERSION := $(MAJOR).$(MINOR).$(PATCH)-beta)
+	$(call update_version,$(NEW_VERSION))
