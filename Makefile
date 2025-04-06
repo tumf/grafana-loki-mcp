@@ -94,10 +94,12 @@ define update_version
 endef
 
 # Get current version (macOS compatible)
-CURRENT_VERSION := $(shell grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*"' $(VERSION_FILE) | tr -d '"')
-MAJOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f1)
-MINOR := $(shell echo $(CURRENT_VERSION) | cut -d. -f2)
-PATCH := $(shell echo $(CURRENT_VERSION) | cut -d. -f3)
+CURRENT_VERSION := $(shell grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*[^"]*"' $(VERSION_FILE) | tr -d '"')
+VERSION_BASE := $(shell echo $(CURRENT_VERSION) | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+VERSION_SUFFIX := $(shell echo $(CURRENT_VERSION) | grep -o -- "-[a-zA-Z0-9]\+" || echo "")
+MAJOR := $(shell echo $(VERSION_BASE) | cut -d. -f1)
+MINOR := $(shell echo $(VERSION_BASE) | cut -d. -f2)
+PATCH := $(shell echo $(VERSION_BASE) | cut -d. -f3)
 
 # Bump patch version (0.0.x)
 bump-patch:
@@ -119,5 +121,5 @@ bump-major:
 
 # Bump beta version (x.x.x-beta)
 bump-beta:
-	$(eval NEW_VERSION := $(MAJOR).$(MINOR).$(PATCH)-beta)
+	$(eval NEW_VERSION := $(VERSION_BASE)-beta)
 	$(call update_version,$(NEW_VERSION))
