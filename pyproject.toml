@@ -51,6 +51,11 @@ dev = [
     "types-setuptools",
 ]
 
+[dependency-groups]
+dev = [
+    "pre-commit>=4.2.0",
+]
+
 [tool.black]
 line-length = 88
 target-version = ["py310"]
