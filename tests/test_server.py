@@ -346,3 +346,83 @@ def test_format_loki_results_with_max_per_line_markdown():
     # Verify the formatted output has truncated log lines
     assert "This is a very long ..." in formatted
     assert "Short log" in formatted  # Short log should not be truncated
+
+
+@patch("requests.get")
+def test_query_loki_with_time_formats(mock_get, grafana_client, mock_response):
+    """Test query_loki method with various time formats."""
+    # Setup mock response
+    mock_response.json.return_value = {"data": {"result": []}}
+    mock_get.return_value = mock_response
+
+    # Mock the _get_loki_datasource_uid method
+    grafana_client._get_loki_datasource_uid = MagicMock(return_value="test-uid")
+
+    # Test Grafana relative time formats
+    time_formats = {
+        "now": "now",
+        "now-1h": "now-1h",
+        "now-1d": "now-1d",
+        "now-7d": "now-7d",
+    }
+
+    for start_time, expected_time in time_formats.items():
+        result = grafana_client.query_loki('{app="test"}', start=start_time)
+        assert result == {"data": {"result": []}}
+        mock_get.assert_called()
+        args, kwargs = mock_get.call_args
+        assert kwargs["params"]["query"] == '{app="test"}'
+        if "start" in kwargs["params"]:
+            assert kwargs["params"]["start"] == expected_time
+
+    # Test ISO 8601 format
+    iso_time = "2024-03-14T10:00:00Z"
+    result = grafana_client.query_loki('{app="test"}', start=iso_time)
+    assert result == {"data": {"result": []}}
+    mock_get.assert_called()
+    args, kwargs = mock_get.call_args
+    assert kwargs["params"]["start"] == iso_time
+
+    # Test Unix timestamp
+    unix_time = "1710410400"  # 2024-03-14 10:00:00 UTC
+    result = grafana_client.query_loki('{app="test"}', start=unix_time)
+    assert result == {"data": {"result": []}}
+    mock_get.assert_called()
+    args, kwargs = mock_get.call_args
+    assert kwargs["params"]["start"] == unix_time
+
+    # Test RFC3339 format
+    rfc3339_time = "2024-03-14T10:00:00+00:00"
+    result = grafana_client.query_loki('{app="test"}', start=rfc3339_time)
+    assert result == {"data": {"result": []}}
+    mock_get.assert_called()
+    args, kwargs = mock_get.call_args
+    assert kwargs["params"]["start"] == rfc3339_time
+
+
+@patch("requests.get")
+def test_query_loki_time_range(mock_get, grafana_client, mock_response):
+    """Test query_loki method with start and end time range."""
+    # Setup mock response
+    mock_response.json.return_value = {"data": {"result": []}}
+    mock_get.return_value = mock_response
+
+    # Mock the _get_loki_datasource_uid method
+    grafana_client._get_loki_datasource_uid = MagicMock(return_value="test-uid")
+
+    # Test with both start and end times
+    start_time = "2024-03-14T10:00:00Z"
+    end_time = "2024-03-14T11:00:00Z"
+    
+    result = grafana_client.query_loki(
+        '{app="test"}',
+        start=start_time,
+        end=end_time
+    )
+    
+    assert result == {"data": {"result": []}}
+    mock_get.assert_called_once()
+    args, kwargs = mock_get.call_args
+    assert kwargs["params"]["query"] == '{app="test"}'
+    assert kwargs["params"]["start"] == start_time
+    assert kwargs["params"]["end"] == end_time
