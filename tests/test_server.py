@@ -12,7 +12,7 @@ import pytest
 # Add the parent directory to the path so we can import the package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from grafana_loki_mcp.server import GrafanaClient, format_loki_results
+from grafana_loki_mcp.server import GrafanaClient
 
 
 @pytest.fixture
@@ -202,152 +202,6 @@ def test_get_datasource_by_name(mock_get, grafana_client, mock_response):
     assert "api/datasources/name/Loki" in args[0]
 
 
-def test_format_loki_results_text():
-    """Test format_loki_results with text format."""
-    # Sample Loki query result
-    results = {
-        "data": {
-            "result": [
-                {
-                    "stream": {"app": "test", "env": "prod"},
-                    "values": [
-                        ["1609459200000000000", "Log line 1"],
-                        ["1609459201000000000", "Log line 2"],
-                    ],
-                }
-            ]
-        }
-    }
-
-    # Format the results
-    formatted = format_loki_results(results, "text")
-
-    # Verify the formatted output
-    assert "Stream: {'app': 'test', 'env': 'prod'}" in formatted
-    assert "Log line 1" in formatted
-    assert "Log line 2" in formatted
-
-
-def test_format_loki_results_markdown():
-    """Test format_loki_results with markdown format."""
-    # Sample Loki query result
-    results = {
-        "data": {
-            "result": [
-                {
-                    "stream": {"app": "test", "env": "prod"},
-                    "values": [
-                        ["1609459200000000000", "Log line 1"],
-                        ["1609459201000000000", "Log line 2"],
-                    ],
-                }
-            ]
-        }
-    }
-
-    # Format the results
-    formatted = format_loki_results(results, "markdown")
-
-    # Verify the formatted output
-    assert "### Stream: {'app': 'test', 'env': 'prod'}" in formatted
-    assert "| Timestamp | Log |" in formatted
-    assert "Log line 1" in formatted
-    assert "Log line 2" in formatted
-
-
-def test_format_loki_results_json():
-    """Test format_loki_results with json format."""
-    # Sample Loki query result
-    results = {
-        "data": {
-            "result": [
-                {
-                    "stream": {"app": "test", "env": "prod"},
-                    "values": [
-                        ["1609459200000000000", "Log line 1"],
-                        ["1609459201000000000", "Log line 2"],
-                    ],
-                }
-            ]
-        }
-    }
-
-    # Format the results
-    formatted = format_loki_results(results, "json")
-
-    # Verify the formatted output is valid JSON
-    parsed = json.loads(formatted)
-    assert parsed == results
-
-
-def test_format_loki_results_no_results():
-    """Test format_loki_results with no results."""
-    # Sample Loki query result with no streams
-    results = {"data": {"result": []}}
-
-    # Format the results
-    formatted = format_loki_results(results)
-
-    # Verify the formatted output
-    assert "No results found" in formatted
-
-
-def test_format_loki_results_with_max_per_line_text():
-    """Test format_loki_results with max_per_line in text format."""
-    # Sample Loki query result with long log lines
-    results = {
-        "data": {
-            "result": [
-                {
-                    "stream": {"app": "test"},
-                    "values": [
-                        [
-                            "1609459200000000000",
-                            "This is a very long log line that should be truncated when max_per_line is set",
-                        ],
-                        ["1609459201000000000", "Short log"],
-                    ],
-                }
-            ]
-        }
-    }
-
-    # Format the results with max_per_line=20
-    formatted = format_loki_results(results, "text", max_per_line=20)
-
-    # Verify the formatted output has truncated log lines
-    assert "This is a very long ..." in formatted
-    assert "Short log" in formatted  # Short log should not be truncated
-
-
-def test_format_loki_results_with_max_per_line_markdown():
-    """Test format_loki_results with max_per_line in markdown format."""
-    # Sample Loki query result with long log lines
-    results = {
-        "data": {
-            "result": [
-                {
-                    "stream": {"app": "test"},
-                    "values": [
-                        [
-                            "1609459200000000000",
-                            "This is a very long log line that should be truncated when max_per_line is set",
-                        ],
-                        ["1609459201000000000", "Short log"],
-                    ],
-                }
-            ]
-        }
-    }
-
-    # Format the results with max_per_line=20
-    formatted = format_loki_results(results, "markdown", max_per_line=20)
-
-    # Verify the formatted output has truncated log lines
-    assert "This is a very long ..." in formatted
-    assert "Short log" in formatted  # Short log should not be truncated
-
-
 @patch("requests.get")
 def test_query_loki_with_time_formats(mock_get, grafana_client, mock_response):
     """Test query_loki method with various time formats."""
@@ -413,13 +267,9 @@ def test_query_loki_time_range(mock_get, grafana_client, mock_response):
     # Test with both start and end times
     start_time = "2024-03-14T10:00:00Z"
     end_time = "2024-03-14T11:00:00Z"
-    
-    result = grafana_client.query_loki(
-        '{app="test"}',
-        start=start_time,
-        end=end_time
-    )
-    
+
+    result = grafana_client.query_loki('{app="test"}', start=start_time, end=end_time)
+
     assert result == {"data": {"result": []}}
     mock_get.assert_called_once()
     args, kwargs = mock_get.call_args
