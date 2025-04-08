@@ -7,6 +7,28 @@
 
 A [FastMCP](https://github.com/jlowin/fastmcp) server that allows querying Loki logs from Grafana.
 
+## MCP Server Settings
+
+```json
+{
+  "mcpServers": {
+    "loki": {
+      "command": "uvx",
+      "args": [
+        "grafana-loki-mcp",
+        "-u",
+        "GRAFANA_URL",
+        "-k",
+        "GRAFANA_API_KEY"
+      ]
+    }
+  }
+}
+```
+
+- `GRAFANA_URL`: URL of your Grafana instance
+- `GRAFANA_API_KEY`: Grafana API key with appropriate permissions
+
 ## Features
 
 - Query Loki logs through Grafana API
