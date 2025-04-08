@@ -6,11 +6,11 @@ A FastMCP server that queries Loki logs from Grafana.
 """
 
 import argparse
+import datetime
 import json
 import os
-import sys
 import re
-import datetime
+import sys
 from typing import Annotated, Any, Dict, Optional, Union, cast
 
 # mypy: ignore-errors
@@ -385,32 +385,32 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
         return datetime.datetime.now()
 
     # Grafana relative time format
-    if time_str == 'now':
+    if time_str == "now":
         return datetime.datetime.now()
-    
-    match = re.match(r'^now-(\d+)([smhdwMy])$', time_str)
+
+    match = re.match(r"^now-(\d+)([smhdwMy])$", time_str)
     if match:
         value = int(match.group(1))
         unit = match.group(2)
-        
+
         delta = None
-        if unit == 's':
+        if unit == "s":
             delta = datetime.timedelta(seconds=value)
-        elif unit == 'm':
+        elif unit == "m":
             delta = datetime.timedelta(minutes=value)
-        elif unit == 'h':
+        elif unit == "h":
             delta = datetime.timedelta(hours=value)
-        elif unit == 'd':
+        elif unit == "d":
             delta = datetime.timedelta(days=value)
-        elif unit == 'w':
+        elif unit == "w":
             delta = datetime.timedelta(weeks=value)
-        elif unit == 'M':
-            delta = datetime.timedelta(days=value*30)  # Approximate
-        elif unit == 'y':
-            delta = datetime.timedelta(days=value*365)  # Approximate
-            
+        elif unit == "M":
+            delta = datetime.timedelta(days=value * 30)  # Approximate
+        elif unit == "y":
+            delta = datetime.timedelta(days=value * 365)  # Approximate
+
         return datetime.datetime.now() - delta
-    
+
     # Unix timestamp (numeric string)
     if time_str.isdigit():
         return time_str
@@ -422,7 +422,7 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
         pass
 
     # If it looks like RFC3339 or other supported format, return as is
-    if re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}', time_str):
+    if re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", time_str):
         return time_str
 
     # If all parsing fails, return current time

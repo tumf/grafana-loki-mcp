@@ -72,9 +72,12 @@ def test_query_loki_with_max_per_line(mock_get, grafana_client, mock_response):
                 {
                     "stream": {"app": "test"},
                     "values": [
-                        ["1609459200000000000", "This is a very long log line that should be truncated when max_per_line is set"],
-                        ["1609459201000000000", "Short log"]
-                    ]
+                        [
+                            "1609459200000000000",
+                            "This is a very long log line that should be truncated when max_per_line is set",
+                        ],
+                        ["1609459201000000000", "Short log"],
+                    ],
                 }
             ]
         }
@@ -89,7 +92,9 @@ def test_query_loki_with_max_per_line(mock_get, grafana_client, mock_response):
 
     # Verify the result has truncated log lines
     assert result["data"]["result"][0]["values"][0][1] == "This is a very long ..."
-    assert result["data"]["result"][0]["values"][1][1] == "Short log"  # Short log should not be truncated
+    assert (
+        result["data"]["result"][0]["values"][1][1] == "Short log"
+    )  # Short log should not be truncated
 
 
 @patch("requests.get")
@@ -296,9 +301,12 @@ def test_format_loki_results_with_max_per_line_text():
                 {
                     "stream": {"app": "test"},
                     "values": [
-                        ["1609459200000000000", "This is a very long log line that should be truncated when max_per_line is set"],
-                        ["1609459201000000000", "Short log"]
-                    ]
+                        [
+                            "1609459200000000000",
+                            "This is a very long log line that should be truncated when max_per_line is set",
+                        ],
+                        ["1609459201000000000", "Short log"],
+                    ],
                 }
             ]
         }
@@ -321,9 +329,12 @@ def test_format_loki_results_with_max_per_line_markdown():
                 {
                     "stream": {"app": "test"},
                     "values": [
-                        ["1609459200000000000", "This is a very long log line that should be truncated when max_per_line is set"],
-                        ["1609459201000000000", "Short log"]
-                    ]
+                        [
+                            "1609459200000000000",
+                            "This is a very long log line that should be truncated when max_per_line is set",
+                        ],
+                        ["1609459201000000000", "Short log"],
+                    ],
                 }
             ]
         }
