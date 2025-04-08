@@ -117,8 +117,8 @@ Query Loki logs through Grafana.
 
 Parameters:
 - `query`: Loki query string
-- `start`: Start time (ISO format, default: 1 hour ago)
-- `end`: End time (ISO format, default: now)
+- `start`: Start time (ISO format, Unix timestamp, or Grafana-style relative time like 'now-1h', default: 1 hour ago)
+- `end`: End time (ISO format, Unix timestamp, or Grafana-style relative time like 'now', default: now)
 - `limit`: Maximum number of log lines to return (default: 100)
 - `direction`: Query direction ('forward' or 'backward', default: 'backward')
 - `max_per_line`: Maximum characters per log line (0 for unlimited, default: 100)
@@ -156,7 +156,9 @@ async with Client() as client:
         {
             "query": '{app="my-app"} |= "error"',
             "limit": 50,
-            "max_per_line": 100  # Limit log lines to 100 characters
+            "max_per_line": 100,  # Limit log lines to 100 characters
+            "start": "now-6h",    # Grafana-style relative time: 6 hours ago
+            "end": "now"          # Current time
         }
     )
 
