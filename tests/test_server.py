@@ -2,7 +2,6 @@
 Tests for the Grafana-Loki MCP Server.
 """
 
-import json
 import os
 import sys
 from unittest.mock import MagicMock, patch
