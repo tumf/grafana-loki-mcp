@@ -6,10 +6,12 @@ A FastMCP server that queries Loki logs from Grafana.
 """
 
 import argparse
+import datetime
 import json
 import os
+import re
 import sys
-from typing import Annotated, Any, Dict, Optional, cast
+from typing import Annotated, Any, Dict, Optional, Union, cast
 
 # mypy: ignore-errors
 import requests
@@ -119,18 +121,22 @@ class GrafanaClient:
 
             # Parse response
             data = response.json()
-            
+
             # Apply max_per_line limit if specified
-            if max_per_line > 0:
-                if "data" in data and "result" in data["data"]:
-                    for stream in data["data"]["result"]:
-                        if "values" in stream:
-                            for i, value in enumerate(stream["values"]):
-                                if len(value) > 1:  # Make sure we have [timestamp, log] format
-                                    # Truncate log line if it exceeds max_per_line
-                                    if len(value[1]) > max_per_line:
-                                        stream["values"][i] = [value[0], value[1][:max_per_line] + "..."]
-            
+            if "data" in data and "result" in data["data"]:
+                for stream in data["data"]["result"]:
+                    if "values" in stream:
+                        for i, value in enumerate(stream["values"]):
+                            if (
+                                len(value) > 1
+                            ):  # Make sure we have [timestamp, log] format
+                                # Truncate log line if it exceeds max_per_line
+                                if len(value[1]) > max_per_line:
+                                    stream["values"][i] = [
+                                        value[0],
+                                        value[1][:max_per_line] + "...",
+                                    ]
+
             return cast(Dict[str, Any], data)
         except requests.exceptions.RequestException as e:
             # Get more detailed error information
@@ -361,21 +367,85 @@ def get_grafana_client() -> GrafanaClient:
     return GrafanaClient(args.grafana_url, args.grafana_api_key)
 
 
+def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
+    """Parse time string in various formats.
+
+    Args:
+        time_str: Time string in various formats:
+            - Grafana relative time (e.g., 'now-1h', 'now')
+            - ISO format (e.g., '2024-03-01T00:00:00')
+            - Unix timestamp (e.g., '1709251200')
+            - RFC3339 format
+
+    Returns:
+        Original string if it's a Unix timestamp or RFC3339 format,
+        or datetime object for Grafana format and ISO format
+    """
+    if not time_str:
+        return datetime.datetime.now()
+
+    # Grafana relative time format
+    if time_str == "now":
+        return datetime.datetime.now()
+
+    match = re.match(r"^now-(\d+)([smhdwMy])$", time_str)
+    if match:
+        value = int(match.group(1))
+        unit = match.group(2)
+
+        delta = None
+        if unit == "s":
+            delta = datetime.timedelta(seconds=value)
+        elif unit == "m":
+            delta = datetime.timedelta(minutes=value)
+        elif unit == "h":
+            delta = datetime.timedelta(hours=value)
+        elif unit == "d":
+            delta = datetime.timedelta(days=value)
+        elif unit == "w":
+            delta = datetime.timedelta(weeks=value)
+        elif unit == "M":
+            delta = datetime.timedelta(days=value * 30)  # Approximate
+        elif unit == "y":
+            delta = datetime.timedelta(days=value * 365)  # Approximate
+
+        return datetime.datetime.now() - delta
+
+    # Unix timestamp (numeric string)
+    if time_str.isdigit():
+        return time_str
+
+    # Try to parse as ISO format
+    try:
+        return datetime.datetime.fromisoformat(time_str)
+    except ValueError:
+        pass
+
+    # If it looks like RFC3339 or other supported format, return as is
+    if re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", time_str):
+        return time_str
+
+    # If all parsing fails, return current time
+    return datetime.datetime.now()
+
+
 # Tool definitions
 @mcp.tool()
 def query_loki(
     query: Annotated[str, "Loki query string (LogQL) to execute"],
     start: Annotated[
         Optional[str],
-        "Start time (ISO format, Unix timestamp, or another supported format like RFC3339)",
+        "Start time (Grafana format like 'now-1h', ISO format, Unix timestamp, or RFC3339)",
     ] = None,
     end: Annotated[
         Optional[str],
-        "End time (ISO format, Unix timestamp, or another supported format like RFC3339)",
+        "End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339)",
     ] = None,
     limit: Annotated[int, "Maximum number of log lines to return"] = 100,
     direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
-    max_per_line: Annotated[int, "Maximum characters per log line (0 for unlimited)"] = 100,
+    max_per_line: Annotated[
+        int, "Maximum characters per log line (0 for unlimited)"
+    ] = 100,
 ) -> Dict[str, Any]:
     """
     Query Loki logs through Grafana.
@@ -392,8 +462,8 @@ def query_loki(
             - Filtering on extracted fields: `{app="frontend"} | json | level="error"`
             - Counting logs: `count_over_time({app="frontend"} [5m])`
             - Rate of logs: `rate({app="frontend"} [5m])`
-        start: Start time (ISO format, Unix timestamp, or another supported format like RFC3339, default: 1 hour ago)
-        end: End time (ISO format, Unix timestamp, or another supported format like RFC3339, default: now)
+        start: Start time (Grafana format like 'now-1h', ISO format, Unix timestamp, or RFC3339, default: 1 hour ago)
+        end: End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339, default: now)
         limit: Maximum number of log lines to return
         direction: Query direction ('forward' or 'backward')
         max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
@@ -401,6 +471,20 @@ def query_loki(
     Returns:
         Dict containing query results
     """
+    # Parse start and end times
+    if start:
+        start_time = parse_grafana_time(start)
+        if isinstance(start_time, datetime.datetime):
+            start = start_time.isoformat()
+        else:
+            start = start_time
+    if end:
+        end_time = parse_grafana_time(end)
+        if isinstance(end_time, datetime.datetime):
+            end = end_time.isoformat()
+        else:
+            end = end_time
+
     client = get_grafana_client()
     return client.query_loki(query, start, end, limit, direction, max_per_line)
 
@@ -477,8 +561,12 @@ def get_datasource_by_name(name: str) -> Dict[str, Any]:
 @mcp.tool()
 def format_loki_results(
     results: Dict[str, Any],
-    format_type: Annotated[str, "Output format ('text', 'json', or 'markdown')"] = "text",
-    max_per_line: Annotated[int, "Maximum characters per log line (0 for unlimited)"] = 0
+    format_type: Annotated[
+        str, "Output format ('text', 'json', or 'markdown')"
+    ] = "text",
+    max_per_line: Annotated[
+        int, "Maximum characters per log line (0 for unlimited)"
+    ] = 0,
 ) -> str:
     """
     Format Loki query results in a more readable format.
