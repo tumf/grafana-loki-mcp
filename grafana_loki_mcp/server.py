@@ -429,25 +429,9 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
     return datetime.datetime.now()
 
 
-# Tool definitions
-@mcp.tool()
-def query_loki(
-    query: Annotated[str, "Loki query string (LogQL) to execute"],
-    start: Annotated[
-        Optional[str],
-        "Start time (Grafana format like 'now-1h', ISO format, Unix timestamp, or RFC3339)",
-    ] = None,
-    end: Annotated[
-        Optional[str],
-        "End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339)",
-    ] = None,
-    limit: Annotated[int, "Maximum number of log lines to return"] = 100,
-    direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
-    max_per_line: Annotated[
-        int, "Maximum characters per log line (0 for unlimited)"
-    ] = 100,
-) -> Dict[str, Any]:
-    """
+def get_custom_query_loki_description() -> str:
+    """Generate a custom description for the query_loki tool with available labels."""
+    base_description = """
     Query Loki logs through Grafana.
 
     Args:
@@ -467,10 +451,100 @@ def query_loki(
         limit: Maximum number of log lines to return
         direction: Query direction ('forward' or 'backward')
         max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
-
-    Returns:
-        Dict containing query results
     """
+
+    # Add labels dynamically if possible
+    try:
+        client = get_grafana_client()
+        labels_data = client.get_loki_labels()
+        if "data" in labels_data and isinstance(labels_data["data"], list):
+            available_labels = labels_data["data"]
+            if available_labels:
+                labels_str = ", ".join(
+                    [f"`{label}`" for label in available_labels[:20]]
+                )
+                if len(available_labels) > 20:
+                    labels_str += f", ... and {len(available_labels) - 20} more"
+                base_description += f"\n\nAvailable labels: {labels_str}"
+    except Exception:
+        pass
+
+    base_description += "\n\nReturns:\n    Dict containing query results"
+    return base_description
+
+
+# Use static description to avoid calling Grafana API at module load time
+STATIC_LOKI_DESCRIPTION = """
+Query Loki logs through Grafana.
+
+Args:
+    query: Loki query string (LogQL). LogQL is Loki's query language that supports log filtering and extraction.
+        Examples:
+        - Simple log stream selection: `{app="frontend"}`
+        - Filtering logs with pattern: `{app="frontend"} |= "error"`
+        - Multiple filters: `{app="frontend"} |= "error" != "timeout"`
+        - Regular expression: `{app="frontend"} |~ "error.*timeout"`
+        - Extracting fields: `{app="frontend"} | json`
+        - Extracting specific fields: `{app="frontend"} | json message,level`
+        - Filtering on extracted fields: `{app="frontend"} | json | level="error"`
+        - Counting logs: `count_over_time({app="frontend"} [5m])`
+        - Rate of logs: `rate({app="frontend"} [5m])`
+    start: Start time (Grafana format like 'now-1h', ISO format, Unix timestamp, or RFC3339, default: 1 hour ago)
+    end: End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339, default: now)
+    limit: Maximum number of log lines to return
+    direction: Query direction ('forward' or 'backward')
+    max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
+
+Returns:
+    Dict containing query results
+"""
+
+
+class DescriptionManager:
+    """
+    Class to manage tool descriptions with label information.
+    Delays actual Grafana API calls until needed during server execution.
+    """
+
+    def __init__(self):
+        self._dynamic_description = None
+
+    def get_description(self) -> str:
+        """
+        Returns dynamically generated description. Generates it if not already generated.
+        """
+        if self._dynamic_description is None:
+            try:
+                self._dynamic_description = get_custom_query_loki_description()
+            except Exception:
+                # Use static description if an error occurs
+                self._dynamic_description = STATIC_LOKI_DESCRIPTION
+        return self._dynamic_description
+
+
+# Create description manager instance
+description_manager = DescriptionManager()
+
+
+@mcp.tool(
+    description=STATIC_LOKI_DESCRIPTION
+)  # Use static description as initial value
+def query_loki(
+    query: Annotated[str, "Loki query string (LogQL) to execute"],
+    start: Annotated[
+        Optional[str],
+        "Start time (Grafana format like 'now-1h', ISO format, Unix timestamp, or RFC3339)",
+    ] = None,
+    end: Annotated[
+        Optional[str],
+        "End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339)",
+    ] = None,
+    limit: Annotated[int, "Maximum number of log lines to return"] = 100,
+    direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
+    max_per_line: Annotated[
+        int, "Maximum characters per log line (0 for unlimited)"
+    ] = 100,
+) -> Dict[str, Any]:
     # Parse start and end times
     if start:
         start_time = parse_grafana_time(start)
@@ -487,6 +561,38 @@ def query_loki(
 
     client = get_grafana_client()
     return client.query_loki(query, start, end, limit, direction, max_per_line)
+
+
+# Update description when server starts
+def update_query_loki_description():
+    """Updates tool description with dynamic content when server starts"""
+    try:
+        # Get dynamic description after server is ready
+        description = description_manager.get_description()
+        mcp._tools["query_loki"].description = description
+    except Exception:
+        # Do nothing if an error occurs
+        pass
+
+
+# Fallback for when add_post_init_hook is not available
+try:
+    # Update description after server initialization
+    mcp.add_post_init_hook(update_query_loki_description)
+except AttributeError:
+    # If FastMCP doesn't support add_post_init_hook,
+    # override the run() method to update description after initialization
+    original_run = mcp.run
+
+    def patched_run(*args, **kwargs):
+        """Patch for mcp.run to update tool descriptions"""
+        # Update description before original execution
+        update_query_loki_description()
+        # Execute original run()
+        return original_run(*args, **kwargs)
+
+    # Override original method
+    mcp.run = patched_run
 
 
 @mcp.tool()
