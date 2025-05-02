@@ -409,7 +409,9 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
         elif unit == "y":
             delta = datetime.timedelta(days=value * 365)  # Approximate
 
-        return datetime.datetime.now() - delta
+        if delta is not None:
+            return datetime.datetime.now() - delta
+        return datetime.datetime.now()
 
     # Unix timestamp (numeric string)
     if time_str.isdigit():
