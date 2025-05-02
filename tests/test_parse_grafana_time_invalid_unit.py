@@ -2,12 +2,9 @@
 Tests for the parse_grafana_time function with invalid unit.
 """
 
+import datetime
 import os
 import sys
-import datetime
-from unittest.mock import patch, MagicMock
-
-import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
