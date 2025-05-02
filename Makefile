@@ -1,4 +1,4 @@
-.PHONY: lint format test clean install update fix-lint build publish test-publish coverage bump-patch bump-minor bump-major
+.PHONY: lint format test clean install update fix-lint build publish test-publish coverage bump-patch bump-minor bump-major release
 
 # Python version
 PYTHON := python3
@@ -100,6 +100,7 @@ VERSION_SUFFIX := $(shell echo $(CURRENT_VERSION) | grep -o -- "-[a-zA-Z0-9]\+" 
 MAJOR := $(shell echo $(VERSION_BASE) | cut -d. -f1)
 MINOR := $(shell echo $(VERSION_BASE) | cut -d. -f2)
 PATCH := $(shell echo $(VERSION_BASE) | cut -d. -f3)
+BETA_NUM := $(shell echo $(CURRENT_VERSION) | grep -o "beta[0-9]\+" | grep -o "[0-9]\+" || echo "0")
 
 # Bump patch version (0.0.x)
 bump-patch:
@@ -121,5 +122,11 @@ bump-major:
 
 # Bump beta version (x.x.x-beta)
 bump-beta:
-	$(eval NEW_VERSION := $(VERSION_BASE)-beta)
+	$(eval NEW_BETA_NUM := $(shell echo $$(($(BETA_NUM) + 1))))
+	$(eval NEW_VERSION := $(VERSION_BASE)-beta$(NEW_BETA_NUM))
+	$(call update_version,$(NEW_VERSION))
+
+# Remove beta suffix for release (x.x.x-betaX -> x.x.x)
+release:
+	$(eval NEW_VERSION := $(VERSION_BASE))
 	$(call update_version,$(NEW_VERSION))
