@@ -423,9 +423,13 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
     except ValueError:
         pass
 
-    # If it looks like RFC3339 or other supported format, return as is
+    # Try to parse RFC3339 format
     if re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", time_str):
-        return time_str
+        try:
+            iso_str = time_str.replace('Z', '+00:00') if time_str.endswith('Z') else time_str
+            return datetime.datetime.fromisoformat(iso_str)
+        except ValueError:
+            pass
 
     # If all parsing fails, return current time
     return datetime.datetime.now()
