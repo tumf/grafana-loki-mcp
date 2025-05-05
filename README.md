@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/tumf-grafana-loki-mcp-badge.png)](https://mseep.ai/app/tumf-grafana-loki-mcp)
+
 # Grafana-Loki MCP Server
 
 [![Test](https://github.com/tumf/grafana-loki-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/tumf/grafana-loki-mcp/actions/workflows/test.yml)
