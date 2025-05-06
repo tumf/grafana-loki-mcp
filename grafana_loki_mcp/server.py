@@ -484,25 +484,31 @@ STATIC_LOKI_DESCRIPTION = """
 Query Loki logs through Grafana.
 
 Args:
-    query: Loki query string (LogQL). LogQL is Loki's query language that supports log filtering and extraction.
+    query: Loki query string (LogQL), Loki's domain-specific language for filtering and extracting logs.
+        Note: Separate multiple labels with commas. E.g.: `{app="frontend", source="user"}`
         Examples:
         - Simple log stream selection: `{app="frontend"}`
+        - Multiple labels: `{app="frontend", source="user"}`
         - Filtering logs with pattern: `{app="frontend"} |= "error"`
         - Multiple filters: `{app="frontend"} |= "error" != "timeout"`
         - Regular expression: `{app="frontend"} |~ "error.*timeout"`
         - Extracting fields: `{app="frontend"} | json`
-        - Extracting specific fields: `{app="frontend"} | json message,level`
+        - Extracting specific fields: `{app="frontend"} | json message, level`
         - Filtering on extracted fields: `{app="frontend"} | json | level="error"`
-        - Counting logs: `count_over_time({app="frontend"} [5m])`
-        - Rate of logs: `rate({app="frontend"} [5m])`
-    start: Start time (Grafana format like 'now-1h', ISO format, Unix timestamp, or RFC3339, default: 1 hour ago)
-    end: End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339, default: now)
-    limit: Maximum number of log lines to return
-    direction: Query direction ('forward' or 'backward')
-    max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
+        - Counting logs: `count_over_time({app="frontend"}[5m])`
+        - Rate of logs: `rate({app="frontend"}[5m])`
+    start: Start time, accepts Grafana time format (e.g., 'now-1h'), ISO8601, Unix timestamp, or RFC3339. Default: 1 hour ago.
+    end: End time, accepts Grafana time format (e.g., 'now'), ISO8601, Unix timestamp, or RFC3339. Default: now.
+    limit: Maximum number of log lines to return.
+    direction: Query direction, either 'forward' or 'backward'.
+    max_per_line: Maximum characters per log line (0 for unlimited). Default: 100.
 
 Returns:
-    Dict containing query results
+    A dictionary containing the query results.
+
+References:
+    - Introduction to LogQL: https://grafana.com/docs/loki/latest/logql/
+    - LogQL filter expressions: https://grafana.com/docs/loki/latest/logql/filter-expr/
 """
 
 
