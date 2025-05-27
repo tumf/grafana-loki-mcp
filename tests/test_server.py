@@ -2,16 +2,18 @@
 Tests for the Grafana-Loki MCP Server.
 """
 
+import datetime
 import os
 import sys
 from unittest.mock import MagicMock, patch
+
 import pytest
-import datetime
 
 # Add the parent directory to the path so we can import the package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from grafana_loki_mcp.server import GrafanaClient, iso8601_to_unix_nano
+
 
 @pytest.fixture
 def mock_response():
@@ -285,17 +287,10 @@ def test_query_loki_with_time_formats(mock_get, grafana_client, mock_response):
 
 
 @patch("requests.get")
-def test_query_loki_time_range(mock_get, grafana_client, mock_response):
+def test_query_loki_time_range(mock_get, grafana_client):
     """Test query_loki method with start and end time range."""
     # Setup mock response
-    mock_response.json.return_value = {"data": {"result": []}}
-    mock_get.return_value = mock_response
-
-    # Mock the _get_loki_datasource_uid method
-@patch("requests.get")
-def test_query_loki_time_range(mock_get, grafana_client, mock_response):
-    """Test query_loki method with start and end time range."""
-    # Setup mock response
+    mock_response = MagicMock()
     mock_response.json.return_value = {"data": {"result": []}}
     mock_get.return_value = mock_response
 
