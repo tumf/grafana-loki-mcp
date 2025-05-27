@@ -34,6 +34,15 @@ DEFAULT_GRAFANA_URL = os.environ.get("GRAFANA_URL", "")
 DEFAULT_GRAFANA_API_KEY = os.environ.get("GRAFANA_API_KEY", "")
 
 
+def iso8601_to_unix_nano(ts: str) -> Optional[int]:
+    """Convert ISO8601 string to UNIX nanoseconds. Return None if not ISO8601."""
+    try:
+        # Accepts e.g. 2025-05-27T14:59:33.073316 or 2025-05-27T14:59:33.073316Z
+        dt = datetime.datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return int(dt.timestamp() * 1_000_000_000)
+    except Exception:
+        return None
+
 class GrafanaClient:
     """Client for interacting with Grafana API."""
 
@@ -88,8 +97,8 @@ class GrafanaClient:
 
         Args:
             query: Loki query string
-            start: Start time (ISO format, default: 1 hour ago)
-            end: End time (ISO format, default: now)
+            start: Start time (ISO format or UNIX ns, default: 1 hour ago)
+            end: End time (ISO format or UNIX ns, default: now)
             limit: Maximum number of log lines to return
             direction: Query direction ('forward' or 'backward')
             max_per_line: Maximum characters per log line (0 for unlimited, default: 100)
@@ -110,9 +119,12 @@ class GrafanaClient:
             "direction": direction,
         }
         if start is not None:
-            params["start"] = start
+            # Accept ISO8601 or UNIX ns
+            unix_start = iso8601_to_unix_nano(start)
+            params["start"] = unix_start if unix_start is not None else start
         if end is not None:
-            params["end"] = end
+            unix_end = iso8601_to_unix_nano(end)
+            params["end"] = unix_end if unix_end is not None else end
 
         # Send request
         try:
@@ -158,6 +170,14 @@ class GrafanaClient:
         Returns:
             Dict containing label names
         """
+        url = f"{self.base_url}/api/datasources/proxy/{self._get_loki_datasource_uid()}/loki/api/v1/labels"
+        response = requests.get(url, headers=self.headers)
+        response.raise_for_status()
+        return response.json()
+
+# ... rest of the file unchanged ...
+
+
         datasource_id = self._get_loki_datasource_uid()
 
         # Set base URL for API request
@@ -567,7 +587,11 @@ def query_loki(
     if end:
         end_time = parse_grafana_time(end)
         if isinstance(end_time, datetime.datetime):
-            end = end_time.isoformat()
+            # Format as RFC3339 with 'Z' for UTC
+            if end_time.tzinfo is not None and end_time.tzinfo.utcoffset(end_time) == datetime.timedelta(0):
+                end = end_time.replace(tzinfo=None).isoformat(timespec='seconds') + 'Z'
+            else:
+                end = end_time.isoformat()
         else:
             end = end_time
 
@@ -674,3 +698,4 @@ def get_datasource_by_name(name: str) -> Dict[str, Any]:
     """
     client = get_grafana_client()
     return client.get_datasource_by_name(name)
+
