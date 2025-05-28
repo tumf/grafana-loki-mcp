@@ -43,6 +43,7 @@ def iso8601_to_unix_nano(ts: str) -> Optional[int]:
     except Exception:
         return None
 
+
 class GrafanaClient:
     """Client for interacting with Grafana API."""
 
@@ -106,6 +107,15 @@ class GrafanaClient:
         Returns:
             Dict containing query results
         """
+        # Ensure we have valid time range
+        if start is not None and end is None:
+            # If start is provided but end is not, default end to current time
+            end = "now"
+        elif start is None and end is None:
+            # If neither start nor end is provided, use default range
+            start = "now-1h"
+            end = "now"
+
         # Get Loki datasource UID
         datasource_id = self._get_loki_datasource_uid()
 
@@ -119,12 +129,23 @@ class GrafanaClient:
             "direction": direction,
         }
         if start is not None:
-            # Accept ISO8601 or UNIX ns
-            unix_start = iso8601_to_unix_nano(start)
-            params["start"] = unix_start if unix_start is not None else start
+            # Accept ISO8601 or UNIX ns or Grafana relative time
+            if start.startswith("now") or start.isdigit():
+                # Keep Grafana relative time or Unix timestamp as is
+                params["start"] = start
+            else:
+                # Convert ISO8601 to UNIX nanoseconds
+                unix_start = iso8601_to_unix_nano(start)
+                params["start"] = unix_start if unix_start is not None else start
         if end is not None:
-            unix_end = iso8601_to_unix_nano(end)
-            params["end"] = unix_end if unix_end is not None else end
+            # Accept ISO8601 or UNIX ns or Grafana relative time
+            if end.startswith("now") or end.isdigit():
+                # Keep Grafana relative time or Unix timestamp as is
+                params["end"] = end
+            else:
+                # Convert ISO8601 to UNIX nanoseconds
+                unix_end = iso8601_to_unix_nano(end)
+                params["end"] = unix_end if unix_end is not None else end
 
         # Send request
         try:
@@ -175,8 +196,7 @@ class GrafanaClient:
         response.raise_for_status()
         return response.json()
 
-# ... rest of the file unchanged ...
-
+        # ... rest of the file unchanged ...
 
         datasource_id = self._get_loki_datasource_uid()
 
@@ -398,42 +418,17 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
             - RFC3339 format
 
     Returns:
-        Original string if it's a Unix timestamp or RFC3339 format,
-        or datetime object for Grafana format and ISO format
+        Original string if it's a Grafana relative time or Unix timestamp,
+        or datetime object for other formats
     """
     if not time_str:
-        return datetime.datetime.now()
+        return "now"
 
-    # Grafana relative time format
-    if time_str == "now":
-        return datetime.datetime.now()
+    # Grafana relative time format - return as-is for Loki API
+    if time_str == "now" or re.match(r"^now-\d+[smhdwMy]$", time_str):
+        return time_str
 
-    match = re.match(r"^now-(\d+)([smhdwMy])$", time_str)
-    if match:
-        value = int(match.group(1))
-        unit = match.group(2)
-
-        delta = None
-        if unit == "s":
-            delta = datetime.timedelta(seconds=value)
-        elif unit == "m":
-            delta = datetime.timedelta(minutes=value)
-        elif unit == "h":
-            delta = datetime.timedelta(hours=value)
-        elif unit == "d":
-            delta = datetime.timedelta(days=value)
-        elif unit == "w":
-            delta = datetime.timedelta(weeks=value)
-        elif unit == "M":
-            delta = datetime.timedelta(days=value * 30)  # Approximate
-        elif unit == "y":
-            delta = datetime.timedelta(days=value * 365)  # Approximate
-
-        if delta is not None:
-            return datetime.datetime.now() - delta
-        return datetime.datetime.now()
-
-    # Unix timestamp (numeric string)
+    # Unix timestamp (numeric string) - return as-is
     if time_str.isdigit():
         return time_str
 
@@ -446,13 +441,15 @@ def parse_grafana_time(time_str: str) -> Union[str, datetime.datetime]:
     # Try to parse RFC3339 format
     if re.match(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", time_str):
         try:
-            iso_str = time_str.replace('Z', '+00:00') if time_str.endswith('Z') else time_str
+            iso_str = (
+                time_str.replace("Z", "+00:00") if time_str.endswith("Z") else time_str
+            )
             return datetime.datetime.fromisoformat(iso_str)
         except ValueError:
             pass
 
-    # If all parsing fails, return current time
-    return datetime.datetime.now()
+    # If all parsing fails, return as Grafana relative time
+    return "now"
 
 
 def get_custom_query_loki_description() -> str:
@@ -578,22 +575,29 @@ def query_loki(
     ] = 100,
 ) -> Dict[str, Any]:
     # Parse start and end times
+    # Ensure end is set to current time if start is provided but end is not
+    if start is not None and end is None:
+        end = "now"  # Default end to current time when start is specified
+
+    # Parse start time
     if start:
-        start_time = parse_grafana_time(start)
-        if isinstance(start_time, datetime.datetime):
-            start = start_time.isoformat()
+        parsed_start = parse_grafana_time(start)
+        if isinstance(parsed_start, str):
+            # Grafana relative time or Unix timestamp - use as-is
+            start = parsed_start
         else:
-            start = start_time
+            # Convert datetime to Unix nanoseconds
+            start = str(int(parsed_start.timestamp() * 1_000_000_000))
+
+    # Parse end time
     if end:
-        end_time = parse_grafana_time(end)
-        if isinstance(end_time, datetime.datetime):
-            # Format as RFC3339 with 'Z' for UTC
-            if end_time.tzinfo is not None and end_time.tzinfo.utcoffset(end_time) == datetime.timedelta(0):
-                end = end_time.replace(tzinfo=None).isoformat(timespec='seconds') + 'Z'
-            else:
-                end = end_time.isoformat()
+        parsed_end = parse_grafana_time(end)
+        if isinstance(parsed_end, str):
+            # Grafana relative time or Unix timestamp - use as-is
+            end = parsed_end
         else:
-            end = end_time
+            # Convert datetime to Unix nanoseconds
+            end = str(int(parsed_end.timestamp() * 1_000_000_000))
 
     client = get_grafana_client()
     return client.query_loki(query, start, end, limit, direction, max_per_line)
@@ -698,4 +702,3 @@ def get_datasource_by_name(name: str) -> Dict[str, Any]:
     """
     client = get_grafana_client()
     return client.get_datasource_by_name(name)
-
