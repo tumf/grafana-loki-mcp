@@ -2,7 +2,6 @@
 Tests for the Grafana-Loki MCP Server.
 """
 
-import datetime
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -12,7 +11,7 @@ import pytest
 # Add the parent directory to the path so we can import the package
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from grafana_loki_mcp.server import GrafanaClient, iso8601_to_unix_nano
+from grafana_loki_mcp.server import GrafanaClient
 
 
 @pytest.fixture
@@ -27,21 +26,6 @@ def mock_response() -> MagicMock:
 def grafana_client() -> GrafanaClient:
     """Create a GrafanaClient instance with mock values."""
     return GrafanaClient("https://grafana.example.com", "fake-api-key")
-
-
-def test_iso8601_to_unix_nano() -> None:
-    """Test ISO8601 to UNIX nanoseconds conversion."""
-    iso = "2025-05-27T14:59:33.073316"
-    dt = datetime.datetime.fromisoformat(iso)
-    expected = int(dt.timestamp() * 1_000_000_000)
-    assert iso8601_to_unix_nano(iso) == expected
-    # With Zulu
-    iso_z = "2025-05-27T14:59:33.073316Z"
-    dt_z = datetime.datetime.fromisoformat(iso_z.replace("Z", "+00:00"))
-    expected_z = int(dt_z.timestamp() * 1_000_000_000)
-    assert iso8601_to_unix_nano(iso_z) == expected_z
-    # Invalid
-    assert iso8601_to_unix_nano("not-a-date") is None
 
 
 def test_grafana_client_init() -> None:
@@ -76,13 +60,11 @@ def test_query_loki(
             "{job='test'}", start=iso_start, end=iso_end
         )
         assert "data" in result2
-        # Ensure conversion was attempted (params should be int for ISO8601)
+        # Ensure conversion was attempted (params should be nanosecond strings for ISO8601)
         call_args = mock_get.call_args_list[-1][1]["params"]
-        # The parameters should be integers (Unix nanoseconds) for ISO8601 input
-        assert isinstance(call_args["start"], int) or isinstance(
-            call_args["start"], str
-        )
-        assert isinstance(call_args["end"], int) or isinstance(call_args["end"], str)
+        # The parameters should be Unix nanosecond strings for ISO8601 input
+        assert isinstance(call_args["start"], str) and call_args["start"].isdigit()
+        assert isinstance(call_args["end"], str) and call_args["end"].isdigit()
 
     # Setup mock response
     mock_response.json.return_value = {"data": {"result": []}}
@@ -272,20 +254,24 @@ def test_query_loki_with_time_formats(
 
     # Test Grafana relative time formats
     time_formats = {
-        "now": "now",
-        "now-1h": "now-1h",
-        "now-1d": "now-1d",
-        "now-7d": "now-7d",
+        "now": "current_time",  # Will be a Unix nanoseconds string
+        "now-1h": "hour_ago",  # Will be a Unix nanoseconds string
+        "now-1d": "day_ago",  # Will be a Unix nanoseconds string
+        "now-7d": "week_ago",  # Will be a Unix nanoseconds string
     }
 
-    for start_time, expected_time in time_formats.items():
+    for start_time, _ in time_formats.items():
         result = grafana_client.query_loki('{app="test"}', start=start_time)
         assert result == {"data": {"result": []}}
         mock_get.assert_called()
         args, kwargs = mock_get.call_args
         assert kwargs["params"]["query"] == '{app="test"}'
         if "start" in kwargs["params"]:
-            assert kwargs["params"]["start"] == expected_time
+            # Should be a Unix nanoseconds string (all digits)
+            assert kwargs["params"]["start"].isdigit()
+            assert (
+                len(kwargs["params"]["start"]) >= 18
+            )  # Unix nanoseconds should be 19 digits
 
     # Test ISO 8601 format
     iso_time = "2024-03-14T10:00:00Z"
@@ -293,8 +279,8 @@ def test_query_loki_with_time_formats(
     assert result == {"data": {"result": []}}
     mock_get.assert_called()
     args, kwargs = mock_get.call_args
-    # Expect nanoseconds since epoch for ISO8601
-    assert kwargs["params"]["start"] == 1710410400000000000
+    # Expect nanoseconds since epoch for ISO8601 as string
+    assert kwargs["params"]["start"] == "1710410400000000000"
 
     # Test Unix timestamp
     unix_time = "1710410400"  # 2024-03-14 10:00:00 UTC
@@ -302,7 +288,9 @@ def test_query_loki_with_time_formats(
     assert result == {"data": {"result": []}}
     mock_get.assert_called()
     args, kwargs = mock_get.call_args
-    assert kwargs["params"]["start"] == unix_time
+    assert (
+        kwargs["params"]["start"] == "1710410400000000000"
+    )  # Converted to nanoseconds
 
     # Test RFC3339 format
     rfc3339_time = "2024-03-14T10:00:00+00:00"
@@ -310,8 +298,8 @@ def test_query_loki_with_time_formats(
     assert result == {"data": {"result": []}}
     mock_get.assert_called()
     args, kwargs = mock_get.call_args
-    # Expect nanoseconds since epoch for RFC3339
-    assert kwargs["params"]["start"] == 1710410400000000000
+    # Expect nanoseconds since epoch for RFC3339 as string
+    assert kwargs["params"]["start"] == "1710410400000000000"
 
 
 @patch("requests.get")
@@ -337,6 +325,6 @@ def test_query_loki_time_range(
     mock_get.assert_called_once()
     args, kwargs = mock_get.call_args
     assert kwargs["params"]["query"] == '{app="test"}'
-    # Expect nanoseconds since epoch for ISO8601
-    assert kwargs["params"]["start"] == 1710410400000000000
-    assert kwargs["params"]["end"] == 1710414000000000000
+    # Expect nanoseconds since epoch for ISO8601 as strings
+    assert kwargs["params"]["start"] == "1710410400000000000"
+    assert kwargs["params"]["end"] == "1710414000000000000"

@@ -13,4 +13,6 @@ from grafana_loki_mcp.server import parse_grafana_time
 def test_parse_grafana_time_invalid_unit() -> None:
     """Test parse_grafana_time with invalid unit."""
     result = parse_grafana_time("now-1z")  # Invalid unit 'z'
-    assert result == "now"
+    # Should return current time as Unix nanoseconds string
+    assert result.isdigit()
+    assert len(result) >= 18  # Unix nanoseconds should be 19 digits
