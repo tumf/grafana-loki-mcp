@@ -25,8 +25,6 @@ mcp = FastMCP(
     "Grafana-Loki Query Server",
     host="0.0.0.0",
     port=52229,
-    allow_iframe=True,
-    allow_cors=True,
 )
 
 # Default configuration
