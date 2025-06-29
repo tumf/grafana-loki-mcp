@@ -30,6 +30,7 @@ mcp = FastMCP(
 # Default configuration
 DEFAULT_GRAFANA_URL = os.environ.get("GRAFANA_URL", "")
 DEFAULT_GRAFANA_API_KEY = os.environ.get("GRAFANA_API_KEY", "")
+DEFAULT_MAX_LOG_LINES = int(os.environ.get("MAX_LOG_LINES", "100"))
 
 
 class GrafanaClient:
@@ -554,7 +555,7 @@ def query_loki(
         Optional[str],
         "End time (Grafana format like 'now', ISO format, Unix timestamp, or RFC3339)",
     ] = None,
-    limit: Annotated[int, "Maximum number of log lines to return"] = 100,
+    limit: Annotated[int, "Maximum number of log lines to return"] = DEFAULT_MAX_LOG_LINES,
     direction: Annotated[str, "Query direction ('forward' or 'backward')"] = "backward",
     max_per_line: Annotated[
         int, "Maximum characters per log line (0 for unlimited)"
