@@ -328,3 +328,31 @@ def test_query_loki_time_range(
     # Expect nanoseconds since epoch for ISO8601 as strings
     assert kwargs["params"]["start"] == "1710410400000000000"
     assert kwargs["params"]["end"] == "1710414000000000000"
+
+
+@patch.dict(os.environ, {"MAX_LOG_LINES": "50"})
+def test_max_log_lines_environment_variable() -> None:
+    """Test that MAX_LOG_LINES environment variable is used as default."""
+    # Import after setting environment variable to ensure it's picked up
+    import importlib
+    
+    # Force reload the module to pick up the new environment variable
+    import grafana_loki_mcp.server
+    importlib.reload(grafana_loki_mcp.server)
+    
+    # Check that the environment variable is properly read
+    assert grafana_loki_mcp.server.DEFAULT_MAX_LOG_LINES == 50
+
+
+@patch.dict(os.environ, {}, clear=True)
+def test_max_log_lines_default_value() -> None:
+    """Test that MAX_LOG_LINES defaults to 100 when not set."""
+    # Import after clearing environment variables
+    import importlib
+    
+    # Force reload the module to pick up the cleared environment
+    import grafana_loki_mcp.server
+    importlib.reload(grafana_loki_mcp.server)
+    
+    # Check that the default value is used
+    assert grafana_loki_mcp.server.DEFAULT_MAX_LOG_LINES == 100
