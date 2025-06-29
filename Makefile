@@ -122,9 +122,20 @@ bump-major:
 
 # Bump beta version (x.x.x-beta)
 bump-beta:
-	$(eval NEW_BETA_NUM := $(shell echo $$(($(BETA_NUM) + 1))))
-	$(eval NEW_VERSION := $(VERSION_BASE)-beta$(NEW_BETA_NUM))
-	$(call update_version,$(NEW_VERSION))
+	@if echo "$(CURRENT_VERSION)" | grep -q "beta"; then \
+		NEW_BETA_NUM=$$(($(BETA_NUM) + 1)); \
+		NEW_VERSION="$(VERSION_BASE)-beta$$NEW_BETA_NUM"; \
+	else \
+		NEW_PATCH=$$(($(PATCH) + 1)); \
+		NEW_VERSION="$(MAJOR).$(MINOR).$$NEW_PATCH-beta1"; \
+	fi; \
+	echo "Updating version to $$NEW_VERSION"; \
+	sed -i.bak "s/__version__ = \"[^\"]*\"/__version__ = \"$$NEW_VERSION\"/" $(VERSION_FILE); \
+	rm -f $(VERSION_FILE).bak; \
+	git add $(VERSION_FILE); \
+	git commit -m "Bump version to $$NEW_VERSION"; \
+	git tag -a "v$$NEW_VERSION" -m "Version $$NEW_VERSION"; \
+	echo "Version updated to $$NEW_VERSION. Don't forget to push with: git push && git push --tags"
 
 # Remove beta suffix for release (x.x.x-betaX -> x.x.x)
 release:
