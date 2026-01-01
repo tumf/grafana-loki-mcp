@@ -7,6 +7,8 @@
 
 A [FastMCP](https://github.com/jlowin/fastmcp) server that allows querying Loki logs from Grafana.
 
+* [My tech blog article](https://blog.tumf.dev/posts/diary/2025/3/13/local-grafana-loki-mcp-cursor/)
+
 ## MCP Server Settings
 
 ```json
