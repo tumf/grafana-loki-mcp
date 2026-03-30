@@ -29,6 +29,10 @@ A [FastMCP](https://github.com/jlowin/fastmcp) server that allows querying Loki 
 - `GRAFANA_URL`: URL of your Grafana instance
 - `GRAFANA_API_KEY`: Grafana API key with appropriate permissions
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/tumf-grafana-loki-mcp).
+
 ## Features
 
 - Query Loki logs through Grafana API
